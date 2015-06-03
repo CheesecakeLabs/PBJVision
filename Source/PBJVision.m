@@ -432,6 +432,14 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
         [self _commitBlock:^{
             [_captureSession setSessionPreset:captureSessionPreset];
         }];
+    } else if ([_captureSession canSetSessionPreset:AVCaptureSessionPreset640x480]) {
+        [self _commitBlock:^{
+            [_captureSession setSessionPreset:AVCaptureSessionPreset640x480];
+        }];
+    } else {
+        [self _commitBlock:^{
+            [_captureSession setSessionPreset:AVCaptureSessionPresetMedium];
+        }];
     }
 }
 
