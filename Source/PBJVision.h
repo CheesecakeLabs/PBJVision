@@ -228,6 +228,7 @@ static CGFloat const PBJVideoBitRate1280x750 = 5000000 * 8;
 @property (nonatomic, readonly) Float64 capturedAudioSeconds;
 @property (nonatomic, readonly) Float64 capturedVideoSeconds;
 
+- (void)startVideoCaptureWithFileName:(NSString*)fileName;
 - (void)startVideoCapture;
 - (void)pauseVideoCapture;
 - (void)resumeVideoCapture;

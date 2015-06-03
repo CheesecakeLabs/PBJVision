@@ -1754,6 +1754,84 @@ typedef void (^PBJVisionBlock)();
     return [self supportsVideoCapture] && [self isCaptureSessionActive] && !_flags.changingModes && isDiskSpaceAvailable;
 }
 
+- (void)startVideoCaptureWithFileName:(NSString*)fileName
+{
+    if (![self _canSessionCaptureWithOutput:_currentOutput]) {
+        [self _failVideoCaptureWithErrorCode:PBJVisionErrorSessionFailed];
+        DLog(@"session is not setup properly for capture");
+        return;
+    }
+    
+    DLog(@"starting video capture");
+    
+    [self _enqueueBlockOnCaptureVideoQueue:^{
+        
+        if (_flags.recording || _flags.paused)
+            return;
+        
+        NSString *outputFile = [NSString stringWithFormat:@"%@.mp4", fileName];
+        
+        if ([_delegate respondsToSelector:@selector(vision:willStartVideoCaptureToFile:)]) {
+            outputFile = [_delegate vision:self willStartVideoCaptureToFile:outputFile];
+            
+            if (!outputFile) {
+                [self _failVideoCaptureWithErrorCode:PBJVisionErrorBadOutputFile];
+                return;
+            }
+        }
+        
+        NSString *outputDirectory = (_captureDirectory == nil ? NSTemporaryDirectory() : _captureDirectory);
+        NSString *outputPath = [outputDirectory stringByAppendingPathComponent:outputFile];
+        NSURL *outputURL = [NSURL fileURLWithPath:outputPath];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:outputPath]) {
+            NSError *error = nil;
+            if (![[NSFileManager defaultManager] removeItemAtPath:outputPath error:&error]) {
+                [self _failVideoCaptureWithErrorCode:PBJVisionErrorOutputFileExists];
+                
+                DLog(@"could not setup an output file (file exists)");
+                return;
+            }
+        }
+        
+        if (!outputPath || [outputPath length] == 0) {
+            [self _failVideoCaptureWithErrorCode:PBJVisionErrorBadOutputFile];
+            
+            DLog(@"could not setup an output file");
+            return;
+        }
+        
+        if (_mediaWriter) {
+            _mediaWriter.delegate = nil;
+            _mediaWriter = nil;
+        }
+        _mediaWriter = [[PBJMediaWriter alloc] initWithOutputURL:outputURL];
+        _mediaWriter.delegate = self;
+        
+        AVCaptureConnection *videoConnection = [_captureOutputVideo connectionWithMediaType:AVMediaTypeVideo];
+        [self _setOrientationForConnection:videoConnection];
+        
+        _startTimestamp = CMClockGetTime(CMClockGetHostTimeClock());
+        _timeOffset = kCMTimeInvalid;
+        
+        _flags.recording = YES;
+        _flags.paused = NO;
+        _flags.interrupted = NO;
+        _flags.videoWritten = NO;
+        
+        _captureThumbnailTimes = [NSMutableSet set];
+        _captureThumbnailFrames = [NSMutableSet set];
+        
+        if (_flags.thumbnailEnabled && _flags.defaultVideoThumbnails) {
+            [self captureVideoThumbnailAtFrame:0];
+        }
+        
+        [self _enqueueBlockOnMainQueue:^{
+            if ([_delegate respondsToSelector:@selector(visionDidStartVideoCapture:)])
+                [_delegate visionDidStartVideoCapture:self];
+        }];
+    }];
+}
+
 - (void)startVideoCapture
 {
     if (![self _canSessionCaptureWithOutput:_currentOutput]) {
