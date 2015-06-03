@@ -81,7 +81,8 @@ typedef NS_ENUM(NSInteger, PBJMirroringMode) {
 typedef NS_ENUM(NSInteger, PBJAuthorizationStatus) {
     PBJAuthorizationStatusNotDetermined = 0,
     PBJAuthorizationStatusAuthorized,
-    PBJAuthorizationStatusAudioDenied
+    PBJAuthorizationStatusAudioDenied,
+    PBJAuthorizationStatusVideoDenied
 };
 
 typedef NS_ENUM(NSInteger, PBJOutputFormat) {
@@ -282,6 +283,7 @@ static CGFloat const PBJVideoBitRate1280x750 = 5000000 * 8;
 
 // authorization / availability
 
+- (void)visionDidChangeMediaAccessStatus:(PBJAuthorizationStatus)status;
 - (void)visionDidChangeAuthorizationStatus:(PBJAuthorizationStatus)status;
 - (void)visionDidChangeFlashAvailablility:(PBJVision *)vision; // flash or torch is available
 

@@ -795,6 +795,9 @@ typedef void (^PBJVisionBlock)();
     if (error) {
         DLog(@"error setting up back camera input (%@)", error);
         error = nil;
+        [self _enqueueBlockOnMainQueue:^{
+            [_delegate visionDidChangeMediaAccessStatus:PBJAuthorizationStatusVideoDenied];
+        }];
     }
     
     if (_cameraMode != PBJCameraModePhoto && _flags.audioCaptureEnabled) {
@@ -803,6 +806,9 @@ typedef void (^PBJVisionBlock)();
 
         if (error) {
             DLog(@"error setting up audio input (%@)", error);
+            [self _enqueueBlockOnMainQueue:^{
+                [_delegate visionDidChangeMediaAccessStatus:PBJAuthorizationStatusAudioDenied];
+            }];
         }
     }
     
