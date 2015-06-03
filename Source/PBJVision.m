@@ -669,7 +669,7 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
         _captureDirectory = nil;
 
         _autoUpdatePreviewOrientation = YES;
-        _autoFreezePreviewDuringCapture = YES;
+        _autoFreezePreviewDuringCapture = NO;
         _usesApplicationAudioSession = NO;
 
         // Average bytes per second based on video dimensions
@@ -680,8 +680,8 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
         _audioBitRate = 64000;
         
         // default flags
-        _flags.thumbnailEnabled = YES;
-        _flags.defaultVideoThumbnails = YES;
+        _flags.thumbnailEnabled = NO;
+        _flags.defaultVideoThumbnails = NO;
         _flags.audioCaptureEnabled = YES;
 
         // setup queues
