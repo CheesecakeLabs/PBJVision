@@ -1023,11 +1023,11 @@ typedef void (^PBJVisionBlock)();
             case PBJCameraModeVideo:
             {
                 // audio input
-                if ([_captureSession canAddInput:_captureDeviceInputAudio]) {
+                if ([_captureSession canAddInput:_captureDeviceInputAudio] && _flags.audioCaptureEnabled) {
                     [_captureSession addInput:_captureDeviceInputAudio];
                 }
                 // audio output
-                if ([_captureSession canAddOutput:_captureOutputAudio]) {
+                if ([_captureSession canAddOutput:_captureOutputAudio] && _flags.audioCaptureEnabled) {
                     [_captureSession addOutput:_captureOutputAudio];
                 }
                 // vidja output
