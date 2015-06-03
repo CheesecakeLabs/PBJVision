@@ -593,7 +593,7 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
         NSError *error = nil;
         [_captureSession beginConfiguration];  // the session to which the receiver's AVCaptureDeviceInput is added.
         if ([_currentDevice lockForConfiguration:&error]) {
-            [_currentDevice setActiveFormat:supportingFormat];
+            // [_currentDevice setActiveFormat:supportingFormat];
             _currentDevice.activeVideoMinFrameDuration = fps;
             _currentDevice.activeVideoMaxFrameDuration = fps;
             _videoFrameRate = videoFrameRate;
