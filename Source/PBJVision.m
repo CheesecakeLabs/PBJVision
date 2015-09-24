@@ -31,6 +31,7 @@
 #import <CoreImage/CoreImage.h>
 #import <ImageIO/ImageIO.h>
 #import <OpenGLES/EAGL.h>
+#import <UIKit/UIKit.h>
 
 #define LOG_VISION 1
 #ifndef DLog
@@ -56,6 +57,10 @@ static NSString * const PBJVisionTorchModeObserverContext = @"PBJVisionTorchMode
 static NSString * const PBJVisionFlashAvailabilityObserverContext = @"PBJVisionFlashAvailabilityObserverContext";
 static NSString * const PBJVisionTorchAvailabilityObserverContext = @"PBJVisionTorchAvailabilityObserverContext";
 static NSString * const PBJVisionCaptureStillImageIsCapturingStillImageObserverContext = @"PBJVisionCaptureStillImageIsCapturingStillImageObserverContext";
+
+// additional video capture keys
+
+NSString * const PBJVisionVideoRotation = @"PBJVisionVideoRotation";
 
 // photo dictionary key definitions
 
@@ -133,7 +138,8 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
     NSInteger _audioBitRate;
     NSInteger _videoFrameRate;
     NSDictionary *_additionalCompressionProperties;
-    
+    NSDictionary *_additionalVideoProperties;
+
     AVCaptureDevice *_currentDevice;
     AVCaptureDeviceInput *_currentInput;
     AVCaptureOutput *_currentOutput;
@@ -207,6 +213,7 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
 @synthesize audioBitRate = _audioBitRate;
 @synthesize videoBitRate = _videoBitRate;
 @synthesize additionalCompressionProperties = _additionalCompressionProperties;
+@synthesize additionalVideoProperties = _additionalVideoProperties;
 @synthesize maximumCaptureDuration = _maximumCaptureDuration;
 
 #pragma mark - singleton
@@ -222,6 +229,11 @@ typedef NS_ENUM(GLint, PBJVisionUniformLocationTypes)
 }
 
 #pragma mark - getters/setters
+
+- (BOOL)isVideoWritten
+{
+    return _flags.videoWritten;
+}
 
 - (BOOL)isCaptureSessionActive
 {
@@ -1127,7 +1139,7 @@ typedef void (^PBJVisionBlock)();
     } else if ( newCaptureOutput && (newCaptureOutput == _captureOutputPhoto) ) {
     
         // specify photo preset
-        sessionPreset = AVCaptureSessionPresetPhoto;
+        sessionPreset = _captureSessionPreset;
     
         // setup photo settings
         NSDictionary *photoSettings = @{AVVideoCodecKey : AVVideoCodecJPEG};
@@ -1670,6 +1682,7 @@ typedef void (^PBJVisionBlock)();
 - (void)capturePhoto
 {
     if (![self _canSessionCaptureWithOutput:_currentOutput] || _cameraMode != PBJCameraModePhoto) {
+        [self _failPhotoCaptureWithErrorCode:PBJVisionErrorSessionFailed];
         DLog(@"session is not setup properly for capture");
         return;
     }
@@ -1678,15 +1691,16 @@ typedef void (^PBJVisionBlock)();
     [self _setOrientationForConnection:connection];
     
     [_captureOutputPhoto captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef imageDataSampleBuffer, NSError *error) {
-        if (!imageDataSampleBuffer) {
-            DLog(@"failed to obtain image data sample buffer");
-            return;
-        }
-    
         if (error) {
             if ([_delegate respondsToSelector:@selector(vision:capturedPhoto:error:)]) {
                 [_delegate vision:self capturedPhoto:nil error:error];
             }
+            return;
+        }
+
+        if (!imageDataSampleBuffer) {
+            [self _failPhotoCaptureWithErrorCode:PBJVisionErrorCaptureFailed];
+            DLog(@"failed to obtain image data sample buffer");
             return;
         }
         
@@ -1834,7 +1848,7 @@ typedef void (^PBJVisionBlock)();
 
 - (void)startVideoCapture
 {
-    if (![self _canSessionCaptureWithOutput:_currentOutput]) {
+    if (![self _canSessionCaptureWithOutput:_currentOutput] || _cameraMode != PBJCameraModeVideo) {
         [self _failVideoCaptureWithErrorCode:PBJVisionErrorSessionFailed];
         DLog(@"session is not setup properly for capture");
         return;
@@ -2120,6 +2134,14 @@ typedef void (^PBJVisionBlock)();
     }
 }
 
+- (void)_failPhotoCaptureWithErrorCode:(NSInteger)errorCode
+{
+    if (errorCode && [_delegate respondsToSelector:@selector(vision:capturedPhoto:error:)]) {
+        NSError *error = [NSError errorWithDomain:PBJVisionErrorDomain code:errorCode userInfo:nil];
+        [_delegate vision:self capturedPhoto:nil error:error];
+    }
+}
+
 #pragma mark - media writer setup
 
 - (BOOL)_setupMediaWriterAudioInputWithSampleBuffer:(CMSampleBufferRef)sampleBuffer
@@ -2198,8 +2220,9 @@ typedef void (^PBJVisionBlock)();
                                      AVVideoWidthKey : @(videoDimensions.width),
                                      AVVideoHeightKey : @(videoDimensions.height),
                                      AVVideoCompressionPropertiesKey : compressionSettings };
-    
-    return [_mediaWriter setupVideoWithSettings:videoSettings];
+
+
+    return [_mediaWriter setupVideoWithSettings:videoSettings withAdditional:[self additionalVideoProperties]];
 }
 
 - (void)_automaticallyEndCaptureIfMaximumDurationReachedWithSampleBuffer:(CMSampleBufferRef)sampleBuffer
@@ -2783,7 +2806,7 @@ typedef void (^PBJVisionBlock)();
 
     [EAGLContext setCurrentContext:_context];
     
-    NSBundle *bundle = [NSBundle mainBundle];
+    NSBundle *bundle = [NSBundle bundleForClass:[PBJVision class]];
     
     NSString *vertShaderName = [bundle pathForResource:@"Shader" ofType:@"vsh"];
     NSString *fragShaderName = [bundle pathForResource:@"Shader" ofType:@"fsh"];
