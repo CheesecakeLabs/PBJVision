@@ -1650,6 +1650,11 @@ typedef void (^PBJVisionBlock)();
         CFRelease(cgImage);
     }
     
+    // Avoids critical memory leak on iOS >= 9.0.
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 9.0) {
+        _ciContext = nil;
+    }
+    
     if (uiImage) {
         photoDict[PBJVisionPhotoImageKey] = uiImage;
         
